@@ -1,41 +1,36 @@
-import { useContext, createContext } from 'react';
-import { useStorageState } from './useStorageState';
+import { useContext, createContext } from "react";
+import { useStorageState } from "./useStorageState";
 
 const AuthContext = createContext({
-  signIn: () => null,
+  signIn: (email) => null,
   signOut: () => null,
   session: null,
   isLoading: false,
 });
 
-// This hook can be used to access the user info.
 export function useSession() {
-  const value = useContext(AuthContext);
-  if (process.env.NODE_ENV !== 'production') {
-    if (!value) {
-      throw new Error('useSession must be wrapped in a <SessionProvider />');
-    }
-  }
-
-  return value;
+  return useContext(AuthContext);
 }
 
+// Proveedor de sesión
 export function SessionProvider({ children }) {
-  const [[isLoading, session], setSession] = useStorageState('session');
+  const [[isLoading, session], setSession] = useStorageState("session");
 
   return (
     <AuthContext.Provider
       value={{
-        signIn: () => {
-          // Perform sign-in logic here
-          setSession('xxx');
+        signIn: (email) => {
+          if (session) return; 
+          setSession({ user: email }); 
         },
         signOut: () => {
+          if (!session) return; 
           setSession(null);
         },
         session,
         isLoading,
-      }}>
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

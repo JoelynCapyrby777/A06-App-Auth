@@ -3,10 +3,24 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-nativ
 import { useSession } from '../ctx';
 import { router } from 'expo-router';
 
+const Mail = 'usuario@ejemplo.com';
+const Password = 'password123';
+
 export default function SignIn() {
   const { signIn } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  const handleSignIn = () => {
+    if (email === Mail && password === Password) {
+      signIn(email); 
+      setTimeout(() => router.replace('/'), 500);
+    } else {
+      alert('Usuario o contraseña incorrectos');
+    }
+  };
+  
+  
 
   return (
     <View style={styles.container}>
@@ -30,10 +44,7 @@ export default function SignIn() {
       
       <TouchableOpacity
         style={styles.button}
-        onPress={() => {
-          signIn();
-          router.replace('/');
-        }}>
+        onPress={handleSignIn}>
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
     </View>
