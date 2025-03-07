@@ -19,8 +19,6 @@ export default function SignIn() {
       alert('Usuario o contraseña incorrectos');
     }
   };
-  
-  
 
   return (
     <View style={styles.container}>
@@ -37,7 +35,7 @@ export default function SignIn() {
       <TextInput
         style={styles.input}
         placeholder="Password"
-        secureTextEntry
+        secureTextEntry={true}
         value={password}
         onChangeText={setPassword}
       />
