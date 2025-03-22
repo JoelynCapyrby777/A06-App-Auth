@@ -1,10 +1,12 @@
 import { Slot } from 'expo-router';
-import { SessionProvider } from '../ctx'; // ⚠️ Asegúrate de importar correctamente
+import { SessionProvider } from '../utils/ctx';
 
 export default function Root() {
   return (
     <SessionProvider>
-      <Slot />
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
     </SessionProvider>
   );
 }

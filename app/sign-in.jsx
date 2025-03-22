@@ -3,20 +3,19 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-nativ
 import { useSession } from '../ctx';
 import { router } from 'expo-router';
 
-const Mail = 'usuario@ejemplo.com';
-const Password = 'password123';
+import { StatusBar } from 'expo-status-bar';
 
 export default function SignIn() {
   const { signIn } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSignIn = () => {
-    if (email === Mail && password === Password) {
-      signIn(email); 
-      setTimeout(() => router.replace('/'), 500);
+  const handleLogin = async () => {
+    const success = await signIn(email, password);
+    if (success) {
+      router.replace("/");
     } else {
-      alert('Usuario o contraseña incorrectos');
+      alert("Invalid credentials");
     }
   };
 
@@ -29,7 +28,7 @@ export default function SignIn() {
         placeholder="Email"
         keyboardType="email-address"
         value={email}
-        onChangeText={setEmail}
+        onChangeText={(value) => setEmail(value)}
       />
       
       <TextInput
@@ -37,7 +36,7 @@ export default function SignIn() {
         placeholder="Password"
         secureTextEntry={true}
         value={password}
-        onChangeText={setPassword}
+        onChangeText={(value) => setPassword(value)}
       />
       
       <TouchableOpacity
