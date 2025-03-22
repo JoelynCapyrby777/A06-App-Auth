@@ -56,4 +56,29 @@ api.interceptors.response.use(
   }
 );
 
+export const login = async (username, password) => {
+  try {
+    const response = await api.post("/auth", { username, password });
+
+    if (response.data && response.data.data.token) {
+      await SecureStore.setItemAsync("session_token", response.data.data.token);
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error("Error en login:", error);
+    throw error;
+  }
+};
+
+export const getProfile = async () => {
+  try {
+    const response = await api.get("/profile");
+    return response.data;
+  } catch (error) {
+    console.error("Error obteniendo perfil:", error);
+    throw error;
+  }
+};
+
 export default api;
