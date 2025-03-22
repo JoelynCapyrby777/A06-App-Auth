@@ -2,7 +2,7 @@
   "expo": {
     "name": "auth-appp",
     "slug": "auth-appp",
-    "version": "1.0.0",
+    "version": "2.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -26,8 +26,17 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-router"
+      "expo-router",
+      "expo-sqlite"
     ],
-    "scheme": "auth-appp"
+    "scheme": "auth-appp",
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "ba841525-2302-4827-b8a8-517be918a1a9"
+      }
+    }
   }
 }
