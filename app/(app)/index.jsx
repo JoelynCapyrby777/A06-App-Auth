@@ -1,5 +1,5 @@
 import { View, Text, Button, StyleSheet } from "react-native";
-import { useSession } from "../../ctx";
+import { useSession } from "../../utils/ctx";
 
 export default function Main() {
   const { token, signOut } = useSession();

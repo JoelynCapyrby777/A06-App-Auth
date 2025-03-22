@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { useSession } from '../ctx';
+import { useSession } from '../utils/ctx';
 import { router } from 'expo-router';
 
 import { StatusBar } from 'expo-status-bar';
@@ -41,7 +41,7 @@ export default function SignIn() {
       
       <TouchableOpacity
         style={styles.button}
-        onPress={handleSignIn}>
+        onPress={handleLogin}>
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
     </View>

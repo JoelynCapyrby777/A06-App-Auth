@@ -1,60 +1,56 @@
-import { useContext, createContext } from "react";
-import { useStorageState } from "./useStorageState";
-
+import { useContext, createContext } from 'react';
+import { useStorageState } from './useStorageState';
+import axios from 'axios';
 const AuthContext = createContext({
-  signIn: (email) => null,
+  signIn: () => null,
   signOut: () => null,
   session: null,
   isLoading: false,
-  token: null,
 });
 
+// This hook can be used to access the user info.
 export function useSession() {
-  return useContext(AuthContext);
+  const value = useContext(AuthContext);
+  if (process.env.NODE_ENV !== 'production') {
+    if (!value) {
+      throw new Error('useSession must be wrapped in a <SessionProvider />');
+    }
+  }
+
+  return value;
 }
 
-// Proveedor de sesión
 export function SessionProvider({ children }) {
-  const [[isLoading, session], setSession] = useStorageState("session");
-  const [token, setToken] = useStorageState("token"); // Almacenar el token manualmente
-
-  // Función para generar un token manualmente
-  const generateToken = (email) => {
-    // Crear un "payload" simple con la información que deseas incluir en el token (como el email)
-    const payload = { email, timestamp: Date.now() };
-    
-    // Convertir el payload a una cadena de texto
-    const stringPayload = JSON.stringify(payload);
-    
-    // Codificar el payload como base64
-    const encodedToken = btoa(stringPayload); // "btoa" convierte a base64
-
-    // Almacenar el token generado
-    setToken(encodedToken);
-    return encodedToken; // Opcionalmente, devolver el token
-  };
+  const [[isLoading, session], setSession] = useStorageState('session_token');
 
   return (
     <AuthContext.Provider
       value={{
-        signIn: (email) => {
-          if (session) return; 
-          setSession({ user: email });
-
-          // Generar y almacenar el token manualmente al hacer login
-          const newToken = generateToken(email);
-          console.log("Token generado:", newToken); // Ver el token en la consola
+        signIn: async (username, password) => {
+          // Perform sign-in logic here
+          const auth = await axios.post('https://clear-sunfish-fairly.ngrok-free.app/auth', {
+            username,
+            password
+          })
+          if(auth) {
+            setSession(auth.data.data.token);
+            return true
+          }
+          return false
+          /*
+          if(user === 'admin' && pass === 'admin') {
+            setSession('token');
+            return true
+          }
+          return false
+          */
         },
         signOut: () => {
-          if (!session) return;
           setSession(null);
-          setToken(null); // Limpiar el token al cerrar sesión
         },
         session,
         isLoading,
-        token, // Proveer el token en el contexto
-      }}
-    >
+      }}>
       {children}
     </AuthContext.Provider>
   );

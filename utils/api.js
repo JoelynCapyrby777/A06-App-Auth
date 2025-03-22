@@ -13,7 +13,7 @@ const getToken = async () => {
 
 // Crear una instancia de Axios
 const api = axios.create({
-  baseURL: "https://clear-sunfish-fairly.ngrok-free.app",
+  baseURL: "https://maximum-shrew-firmly.ngrok-free.app",
   timeout: 10000, // Timeout de 10 segundos
 });
 
