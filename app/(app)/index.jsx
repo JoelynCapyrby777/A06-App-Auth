@@ -25,6 +25,7 @@ export default function Main() {
   const notificationListener = useRef();
   const responseListener = useRef();
 
+  // Redirigir a sign-in si no hay sesión una vez que termina la carga
   useEffect(() => {
     if (!loading && !session) {
       router.replace("/sign-in");
@@ -36,10 +37,11 @@ export default function Main() {
       if (session) {
         try {
           const data = await getProfile();
-          if (!data || !data.email) {
+          // Validamos que la respuesta tenga la estructura esperada:
+          if (!data || !data.user || !data.user.email) {
             throw new Error("Perfil incompleto o no disponible");
           }
-          setProfile(data);
+          setProfile(data.user); // Almacenamos el objeto 'user'
         } catch (error) {
           console.error("❌ Error obteniendo perfil:", error.message || error);
           Alert.alert("Error", "No se pudo obtener tu perfil. Inténtalo más tarde.");
@@ -67,8 +69,12 @@ export default function Main() {
       });
 
       return () => {
-        Notifications.removeNotificationSubscription(notificationListener.current);
-        Notifications.removeNotificationSubscription(responseListener.current);
+        if (notificationListener.current) {
+          Notifications.removeNotificationSubscription(notificationListener.current);
+        }
+        if (responseListener.current) {
+          Notifications.removeNotificationSubscription(responseListener.current);
+        }
       };
     }
   }, [session]);
@@ -80,12 +86,13 @@ export default function Main() {
       console.error("❌ Error cerrando sesión:", error);
     } finally {
       signOut();
+      router.replace("/sign-in");
     }
   };
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007BFF" />
       </View>
     );
@@ -97,9 +104,15 @@ export default function Main() {
 
       {session && profile ? (
         <View style={styles.profileContainer}>
-          <Text style={styles.profileText}>📛 <Text style={styles.bold}>Nombre:</Text> {profile.name} {profile.lastName}</Text>
-          <Text style={styles.profileText}>👤 <Text style={styles.bold}>Usuario:</Text> {profile.user}</Text>
-          <Text style={styles.profileText}>📧 <Text style={styles.bold}>Correo:</Text> {profile.email}</Text>
+          <Text style={styles.profileText}>
+            📛 <Text style={styles.bold}>Nombre:</Text> {profile.name} {profile.lastName}
+          </Text>
+          <Text style={styles.profileText}>
+            👤 <Text style={styles.bold}>Usuario:</Text> {profile.username}
+          </Text>
+          <Text style={styles.profileText}>
+            📧 <Text style={styles.bold}>Correo:</Text> {profile.email}
+          </Text>
         </View>
       ) : (
         <Text style={styles.noSession}>No se pudo cargar el perfil.</Text>
@@ -120,9 +133,13 @@ export default function Main() {
 
       {notification && (
         <View style={styles.notificationContainer}>
-          <Text style={styles.text}>📩 <Text style={styles.bold}>Notificación Recibida:</Text></Text>
-          <Text style={styles.text}>📌 <Text style={styles.bold}>Título:</Text> {notification.request.content.title}</Text>
-          <Text style={styles.text}>💬 <Text style={styles.bold}>Mensaje:</Text> {notification.request.content.body}</Text>
+          <Text style={styles.notificationTitle}>📩 Notificación Recibida:</Text>
+          <Text style={styles.notificationText}>
+            <Text style={styles.bold}>Título:</Text> {notification.request.content.title}
+          </Text>
+          <Text style={styles.notificationText}>
+            <Text style={styles.bold}>Mensaje:</Text> {notification.request.content.body}
+          </Text>
         </View>
       )}
     </View>
@@ -164,7 +181,6 @@ async function registerForPushNotificationsAsync() {
       Alert.alert("Permisos denegados", "No se otorgaron permisos para notificaciones.");
       return;
     }
-
     try {
       const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
       if (!projectId) {
@@ -185,10 +201,14 @@ async function registerForPushNotificationsAsync() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
     backgroundColor: "#f4f4f9",
     padding: 20,
+    alignItems: "center",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   title: {
     fontSize: 28,
@@ -197,24 +217,22 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   profileContainer: {
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#ccc",
     width: "100%",
     maxWidth: 350,
-    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 20,
     marginBottom: 20,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
     shadowRadius: 5,
+    elevation: 3,
   },
   profileText: {
     fontSize: 16,
+    marginBottom: 8,
     color: "#333",
-    marginBottom: 5,
   },
   bold: {
     fontWeight: "bold",
@@ -223,16 +241,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#888",
     fontStyle: "italic",
+    marginBottom: 20,
   },
   notificationContainer: {
-    marginTop: 20,
-    padding: 15,
+    width: "100%",
+    maxWidth: 350,
     backgroundColor: "#FFF3CD",
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#FFEEBA",
-    width: "90%",
+    padding: 15,
     alignItems: "center",
+    marginBottom: 20,
+  },
+  notificationTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 5,
+    color: "#333",
+  },
+  notificationText: {
+    fontSize: 14,
+    color: "#333",
   },
   tokenContainer: {
     marginTop: 10,
