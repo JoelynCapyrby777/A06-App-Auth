@@ -33,20 +33,24 @@ export function useStorageState(key) {
   const [state, setState] = useAsyncState();
 
   useEffect(() => {
-    if (Platform.OS === 'web') {
+    const fetchStoredValue = async () => {
       try {
-        if (typeof localStorage !== 'undefined') {
-          setState(localStorage.getItem(key));
+        let value = null;
+        if (Platform.OS === 'web') {
+          value = localStorage.getItem(key);
+        } else {
+          value = await SecureStore.getItemAsync(key);
         }
+  
+        setState(value ? JSON.parse(value) : null);  // 🔹 Convierte la sesión a un objeto
       } catch (e) {
-        console.error('Local storage is unavailable:', e);
+        console.error("Error obteniendo el valor almacenado:", e);
       }
-    } else {
-      SecureStore.getItemAsync(key).then(value => {
-        setState(value);
-      });
-    }
+    };
+  
+    fetchStoredValue();
   }, [key]);
+  
 
   const setValue = useCallback(
     (value) => {

@@ -1,82 +1,89 @@
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 
-// Función para obtener el token de Secure Store
-const getToken = async () => {
+// Función para obtener la sesión guardada en SecureStore
+const getSession = async () => {
   try {
-    return await SecureStore.getItemAsync("session_token");
+    const session = await SecureStore.getItemAsync("session_token");
+    return session ? JSON.parse(session) : null;
   } catch (error) {
-    console.error("Error obteniendo el token:", error);
+    console.error("❌ Error obteniendo la sesión:", error);
     return null;
   }
 };
 
-// Crear una instancia de Axios
+// Instancia de Axios con configuración base
 const api = axios.create({
   baseURL: "https://maximum-shrew-firmly.ngrok-free.app",
-  timeout: 10000, // Timeout de 10 segundos
+  timeout: 10000,
 });
 
-// Interceptor para agregar el token en cada petición
+// Interceptor para agregar el token solo en rutas protegidas
 api.interceptors.request.use(
   async (config) => {
-    const token = await getToken();
-    if (token) {
-      console.log("Token:", `Bearer ${token}`);
-      config.headers.Authorization = `Bearer ${token}`;
+    if (config.url === "/profile" || config.url === "/logout") {
+      const session = await getSession();
+      if (session?.token) {
+        console.log("📡 Enviando token en:", config.url, session.token);
+        config.headers.Authorization = `Bearer ${session.token}`;
+      } else {
+        console.warn("⚠️ No hay token en SecureStore para", config.url);
+      }
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Interceptor de respuesta para manejar errores
-api.interceptors.response.use(
-  (response) => response, // Si la respuesta es correcta, la devuelve sin modificar
-  async (error) => {
-    if (error.response) {
-      const { status } = error.response;
-
-      // Si el token expiró, elimina el token y redirige a login
-      if (status === 401) {
-        console.log("Token expirado, redirigiendo a login...");
-        await SecureStore.deleteItemAsync("token");
-        // Aquí podrías navegar al login, si usas React Navigation
-      }
-
-      // Manejo de otros errores
-      if (status === 500) {
-        console.error("Error interno del servidor");
-      }
-    }
-
-    return Promise.reject(error);
-  }
-);
-
+// Función de login corregida
 export const login = async (username, password) => {
   try {
-    const response = await api.post("/auth", { username, password });
+    console.log("📡 Enviando login con:", { username, password });
 
-    if (response.data && response.data.data.token) {
-      await SecureStore.setItemAsync("session_token", response.data.data.token);
+    const response = await api.post("/auth", { username, password });
+    console.log("✅ Respuesta del servidor:", response.data);
+
+    if (!response.data?.data) {
+      console.error("❌ Error: No se recibió información del usuario");
+      throw new Error("Credenciales incorrectas");
     }
 
-    return response.data;
+    // Almacena solo el objeto de usuario (sin envolver en "data")
+    const userData = response.data.data;
+
+    await SecureStore.setItemAsync("session_token", JSON.stringify(userData));
+
+    return userData; // Devuelve el objeto con token y demás datos
   } catch (error) {
-    console.error("Error en login:", error);
-    throw error;
+    console.error("❌ Error en login:", error?.response?.data?.message || error.message);
+    throw new Error("Usuario o contraseña incorrectos");
   }
 };
 
+// Función para obtener el perfil del usuario
 export const getProfile = async () => {
   try {
+    console.log("📡 Solicitando perfil del usuario...");
     const response = await api.get("/profile");
-    return response.data;
+    if (!response.data) {
+      throw new Error("No se pudo obtener el perfil");
+    }
+    console.log("✅ Perfil obtenido:", response.data);
+    return response.data; // Se espera que el backend devuelva un objeto con { message, user }
   } catch (error) {
-    console.error("Error obteniendo perfil:", error);
+    console.error("❌ Error obteniendo perfil:", error?.response?.data || error.message);
+    return null;
+  }
+};
+
+// Función para cerrar sesión
+export const logout = async () => {
+  try {
+    await api.post("/logout");
+    await SecureStore.deleteItemAsync("session_token");
+    console.log("✅ Sesión cerrada correctamente");
+  } catch (error) {
+    console.error("❌ Error cerrando sesión:", error);
     throw error;
   }
 };

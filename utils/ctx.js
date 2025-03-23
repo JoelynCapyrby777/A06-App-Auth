@@ -1,6 +1,8 @@
-import { useContext, createContext } from 'react';
-import { useStorageState } from './useStorageState';
-import axios from 'axios';
+import { useContext, createContext } from "react";
+import { useStorageState } from "./useStorageState";
+import api, { login, getProfile } from "./api";
+import * as SecureStore from "expo-secure-store";
+
 const AuthContext = createContext({
   signIn: () => null,
   signOut: () => null,
@@ -8,49 +10,50 @@ const AuthContext = createContext({
   isLoading: false,
 });
 
-// This hook can be used to access the user info.
+// Hook para acceder a la sesión
 export function useSession() {
   const value = useContext(AuthContext);
-  if (process.env.NODE_ENV !== 'production') {
-    if (!value) {
-      throw new Error('useSession must be wrapped in a <SessionProvider />');
-    }
+  if (process.env.NODE_ENV !== "production" && !value) {
+    throw new Error("useSession must be wrapped in a <SessionProvider />");
   }
-
   return value;
 }
 
 export function SessionProvider({ children }) {
-  const [[isLoading, session], setSession] = useStorageState('session_token');
+  const [[isLoading, session], setSession] = useStorageState("session_token");
 
   return (
     <AuthContext.Provider
       value={{
         signIn: async (username, password) => {
-          // Perform sign-in logic here
-          const auth = await axios.post('https://clear-sunfish-fairly.ngrok-free.app/auth', {
-            username,
-            password
-          })
-          if(auth) {
-            setSession(auth.data.data.token);
-            return true
+          try {
+            console.log("📡 Intentando iniciar sesión con:", { username, password });
+            const sessionData = await login(username, password);
+            if (!sessionData) {
+              console.error("❌ Error: No se recibió información del usuario");
+              throw new Error("Credenciales incorrectas");
+            }
+            setSession(sessionData);
+            console.log("✅ Sesión guardada:", sessionData);
+
+            // Obtener el perfil (si lo necesitas, opcional)
+            const profile = await getProfile();
+            console.log("👤 Perfil del usuario:", profile);
+
+            return { success: true };
+          } catch (error) {
+            console.error("❌ Error en signIn:", error?.message || error);
+            return { success: false, message: error?.message || "Error desconocido en el inicio de sesión" };
           }
-          return false
-          /*
-          if(user === 'admin' && pass === 'admin') {
-            setSession('token');
-            return true
-          }
-          return false
-          */
         },
-        signOut: () => {
+        signOut: async () => {
+          await SecureStore.deleteItemAsync("session_token");
           setSession(null);
         },
         session,
         isLoading,
-      }}>
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
