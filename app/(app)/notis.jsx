@@ -1,90 +1,19 @@
 import { useState, useEffect, useRef } from "react";
-import { Text, View, TouchableOpacity, Alert, Platform, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, Alert, Platform, StyleSheet } from "react-native";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
-import Constants from "expo-constants";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
-
-// Función para enviar una notificación push
-async function sendPushNotification(expoPushToken) {
-  const message = {
-    to: expoPushToken,
-    sound: "default",
-    title: "🔔 Nueva Notificación",
-    body: "Este es un mensaje de prueba.",
-    data: { someData: "Información adicional aquí" },
-  };
-
-  await fetch("https://exp.host/--/api/v2/push/send", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Accept-encoding": "gzip, deflate",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(message),
-  });
-}
-
-// Función para registrar el dispositivo y obtener el token
-async function registerForPushNotificationsAsync() {
-  if (Platform.OS === "android") {
-    Notifications.setNotificationChannelAsync("default", {
-      name: "default",
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: "#FF231F7C",
-    });
-  }
-
-  if (Device.isDevice) {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    if (existingStatus !== "granted") {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    if (finalStatus !== "granted") {
-      Alert.alert("Permiso Denegado", "No se otorgaron permisos para notificaciones.");
-      return;
-    }
-
-    const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
-    if (!projectId) {
-      Alert.alert("Error", "No se encontró el Project ID.");
-      return;
-    }
-
-    try {
-      const pushTokenString = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-      console.log("Expo Push Token:", pushTokenString);
-      return pushTokenString;
-    } catch (e) {
-      Alert.alert("Error", "No se pudo obtener el token de notificaciones.");
-    }
-  } else {
-    Alert.alert("Error", "Debes usar un dispositivo físico para recibir notificaciones.");
-  }
-}
-
-export default function App() {
+export default function NotificationsScreen() {
   const [expoPushToken, setExpoPushToken] = useState("");
-  const [notification, setNotification] = useState(undefined);
+  const [notification, setNotification] = useState(null);
   const notificationListener = useRef();
   const responseListener = useRef();
 
   useEffect(() => {
-    registerForPushNotificationsAsync()
-      .then((token) => setExpoPushToken(token ?? ""))
-      .catch((error) => setExpoPushToken(`${error}`));
+    registerForPushNotificationsAsync().then((token) => {
+      if (token) setExpoPushToken(token);
+    });
 
     notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
       setNotification(notification);
@@ -107,7 +36,7 @@ export default function App() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
-        <Ionicons name="notifications" size={28} color="#000" /> Notificaciones Push
+        <Ionicons name="notifications" size={24} color="#333" /> Notificaciones Locales
       </Text>
 
       {expoPushToken ? (
@@ -119,8 +48,8 @@ export default function App() {
         </View>
       ) : null}
 
-      <TouchableOpacity style={styles.button} onPress={async () => await sendPushNotification(expoPushToken)}>
-        <Ionicons name="send" size={18} color="#fff" />
+      <TouchableOpacity style={styles.button} onPress={schedulePushNotification}>
+        <Ionicons name="send" size={16} color="#fff" />
         <Text style={styles.buttonText}> Enviar Notificación</Text>
       </TouchableOpacity>
 
@@ -130,18 +59,64 @@ export default function App() {
             <Ionicons name="mail" size={16} color="#333" /> Notificación Recibida
           </Text>
           <Text style={styles.notificationText}>
-            <Ionicons name="bookmark" size={14} color="#333" /> <Text style={styles.bold}>Título:</Text> {notification.request.content.title}
+            <Text style={styles.bold}>
+              <Ionicons name="bookmark" size={14} color="#333" /> Título:
+            </Text> {notification.request.content.title}
           </Text>
           <Text style={styles.notificationText}>
-            <Ionicons name="chatbubble" size={14} color="#333" /> <Text style={styles.bold}>Mensaje:</Text> {notification.request.content.body}
-          </Text>
-          <Text style={styles.notificationText}>
-            <Ionicons name="information-circle" size={14} color="#333" /> <Text style={styles.bold}>Datos:</Text> {JSON.stringify(notification.request.content.data)}
+            <Text style={styles.bold}>
+              <Ionicons name="chatbubble" size={14} color="#333" /> Mensaje:
+            </Text> {notification.request.content.body}
           </Text>
         </View>
       )}
     </View>
   );
+}
+
+async function schedulePushNotification() {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "📬 Notificación local",
+      body: "Este es un mensaje de prueba desde la app.",
+      data: { extraData: "Soy Sans" },
+      sound: "default",
+    },
+    trigger: { seconds: 5 },
+  });
+}
+
+async function registerForPushNotificationsAsync() {
+  let token;
+
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("default", {
+      name: "Default",
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: "#FF231F7C",
+    });
+  }
+
+  if (Device.isDevice) {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== "granted") {
+      Alert.alert("Permisos denegados", "No se otorgaron permisos para notificaciones.");
+      return;
+    }
+
+    token = (await Notifications.getExpoPushTokenAsync()).data;
+    console.log("Expo Push Token:", token);
+  } else {
+    Alert.alert("Error", "Debes usar un dispositivo físico para recibir notificaciones.");
+  }
+
+  return token;
 }
 
 const styles = StyleSheet.create({

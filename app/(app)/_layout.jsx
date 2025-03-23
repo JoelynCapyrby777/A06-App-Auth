@@ -1,44 +1,72 @@
 import { Tabs } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
+
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#ffd33d",
+        tabBarActiveTintColor: "#FFD700", 
+        tabBarInactiveTintColor: "#aaa",
+        tabBarShowLabel: true,
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "bold",
+        },
         headerStyle: {
-          backgroundColor: "#25292e",
+          backgroundColor: "#1E1E1E", 
         },
         headerShadowVisible: false,
         headerTintColor: "#fff",
         tabBarStyle: {
-          backgroundColor: "#25292e",
+          backgroundColor: "#25292E",
+          borderTopWidth: 1,
+          borderTopColor: "#333", 
+          paddingBottom: 5,
+          paddingTop: 5,
+          height: 60, 
         },
       }}
     >
+      {/* HOME */}
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "Inicio",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? "home-sharp" : "home-outline"}
+              name={focused ? "home" : "home-outline"}
               color={color}
-              size={24}
+              size={26}
             />
           ),
         }}
       />
+
+      {/* NOTIFICACIONES LOCALES */}
+      <Tabs.Screen
+        name="notis"
+        options={{
+          title: "Locales",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "notifications" : "notifications-outline"}
+              color={color}
+              size={26}
+            />
+          ),
+        }}
+      />
+
+      {/* PUSH NOTIFICATIONS */}
       <Tabs.Screen
         name="push"
         options={{
           title: "Push",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={
-                focused ? "information-circle" : "information-circle-outline"
-              }
+              name={focused ? "paper-plane" : "paper-plane-outline"}
               color={color}
-              size={24}
+              size={26}
             />
           ),
         }}

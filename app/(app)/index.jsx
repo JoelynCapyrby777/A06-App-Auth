@@ -1,31 +1,16 @@
-import { useState, useEffect, useRef } from "react";
-import { View, Text, Button, StyleSheet, ActivityIndicator, Platform, Alert } from "react-native";
-import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
-import Constants from "expo-constants";
+import { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useSession } from "../../utils/ctx";
 import { getProfile, logout } from "../../utils/api";
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 export default function Main() {
   const { session, signOut } = useSession();
   const router = useRouter();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [expoPushToken, setExpoPushToken] = useState("");
-  const [notification, setNotification] = useState(null);
-  const notificationListener = useRef();
-  const responseListener = useRef();
 
-  // Redirigir a sign-in si no hay sesión una vez que termina la carga
   useEffect(() => {
     if (!loading && !session) {
       router.replace("/sign-in");
@@ -37,11 +22,10 @@ export default function Main() {
       if (session) {
         try {
           const data = await getProfile();
-          // Validamos que la respuesta tenga la estructura esperada:
           if (!data || !data.user || !data.user.email) {
             throw new Error("Perfil incompleto o no disponible");
           }
-          setProfile(data.user); // Almacenamos el objeto 'user'
+          setProfile(data.user);
         } catch (error) {
           console.error("❌ Error obteniendo perfil:", error.message || error);
           Alert.alert("Error", "No se pudo obtener tu perfil. Inténtalo más tarde.");
@@ -54,29 +38,6 @@ export default function Main() {
     };
 
     fetchProfile();
-
-    if (session) {
-      registerForPushNotificationsAsync().then((token) => {
-        if (token) setExpoPushToken(token);
-      });
-
-      notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
-        setNotification(notification);
-      });
-
-      responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-        console.log(response);
-      });
-
-      return () => {
-        if (notificationListener.current) {
-          Notifications.removeNotificationSubscription(notificationListener.current);
-        }
-        if (responseListener.current) {
-          Notifications.removeNotificationSubscription(responseListener.current);
-        }
-      };
-    }
   }, [session]);
 
   const handleSignOut = async () => {
@@ -100,18 +61,21 @@ export default function Main() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>👋 Bienvenido</Text>
+      <Text style={styles.title}>Bienvenido</Text>
 
       {session && profile ? (
         <View style={styles.profileContainer}>
           <Text style={styles.profileText}>
-            📛 <Text style={styles.bold}>Nombre:</Text> {profile.name} {profile.lastName}
+            <Ionicons name="id-card-outline" size={20} color="#000" />{" "}
+            <Text style={styles.bold}>Nombre:</Text> {profile.name} {profile.lastName}
           </Text>
           <Text style={styles.profileText}>
-            👤 <Text style={styles.bold}>Usuario:</Text> {profile.username}
+            <Ionicons name="person-circle-outline" size={20} color="#000" />{" "}
+            <Text style={styles.bold}>Usuario:</Text> {profile.username}
           </Text>
           <Text style={styles.profileText}>
-            📧 <Text style={styles.bold}>Correo:</Text> {profile.email}
+            <Ionicons name="mail-outline" size={20} color="#000" />{" "}
+            <Text style={styles.bold}>Correo:</Text> {profile.email}
           </Text>
         </View>
       ) : (
@@ -119,83 +83,13 @@ export default function Main() {
       )}
 
       {session && (
-        <>
-          <Button title="Cerrar Sesión" onPress={handleSignOut} color="#FF4D4D" />
-          {expoPushToken ? (
-            <View style={styles.tokenContainer}>
-              <Text style={styles.tokenText}>🔔 Token Notificaciones:</Text>
-              <Text style={styles.tokenValue}>{expoPushToken}</Text>
-            </View>
-          ) : null}
-          <Button title="Enviar Notificación" onPress={schedulePushNotification} color="#007BFF" />
-        </>
-      )}
-
-      {notification && (
-        <View style={styles.notificationContainer}>
-          <Text style={styles.notificationTitle}>📩 Notificación Recibida:</Text>
-          <Text style={styles.notificationText}>
-            <Text style={styles.bold}>Título:</Text> {notification.request.content.title}
-          </Text>
-          <Text style={styles.notificationText}>
-            <Text style={styles.bold}>Mensaje:</Text> {notification.request.content.body}
-          </Text>
-        </View>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut}>
+          <Ionicons name="log-out-outline" size={24} color="#fff" />
+          <Text style={styles.logoutText}>Cerrar Sesión</Text>
+        </TouchableOpacity>
       )}
     </View>
   );
-}
-
-async function schedulePushNotification() {
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: "📬 Notificación de prueba",
-      body: "Este es un mensaje de prueba desde la app.",
-      data: { extraData: "Alguna información extra" },
-      sound: "default",
-    },
-    trigger: { seconds: 5 },
-  });
-}
-
-async function registerForPushNotificationsAsync() {
-  let token;
-
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "Default",
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: "#FF231F7C",
-    });
-  }
-
-  if (Device.isDevice) {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    if (existingStatus !== "granted") {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    if (finalStatus !== "granted") {
-      Alert.alert("Permisos denegados", "No se otorgaron permisos para notificaciones.");
-      return;
-    }
-    try {
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-      if (!projectId) {
-        throw new Error("ID del proyecto no encontrado");
-      }
-      token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-      console.log("Expo Push Token:", token);
-    } catch (error) {
-      console.error("Error obteniendo token:", error);
-    }
-  } else {
-    Alert.alert("Error", "Debes usar un dispositivo físico para recibir notificaciones.");
-  }
-
-  return token;
 }
 
 const styles = StyleSheet.create({
@@ -243,39 +137,19 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     marginBottom: 20,
   },
-  notificationContainer: {
-    width: "100%",
-    maxWidth: 350,
-    backgroundColor: "#FFF3CD",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#FFEEBA",
-    padding: 15,
+  logoutButton: {
+    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    backgroundColor: "#FF4D4D",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 10,
   },
-  notificationTitle: {
+  logoutText: {
+    color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
-    marginBottom: 5,
-    color: "#333",
-  },
-  notificationText: {
-    fontSize: 14,
-    color: "#333",
-  },
-  tokenContainer: {
-    marginTop: 10,
-    padding: 10,
-    backgroundColor: "#E3F2FD",
-    borderRadius: 8,
-  },
-  tokenText: {
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  tokenValue: {
-    fontSize: 12,
-    color: "#555",
+    marginLeft: 8,
   },
 });
